@@ -441,34 +441,67 @@ def list_permissions(request):
     permissions = Permission.objects.filter(employee=employee).exclude(status="Pending").order_by("-date")
     return Response(PermissionSerializer(permissions, many=True).data)
 
+from datetime import time
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.utils import timezone
+
+IST = timezone.get_fixed_timezone(330)  # +5:30 IST
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def check_in(request):
     employee = Employee.objects.get(user=request.user)
-    today = timezone.now().astimezone(IST).date()
-    attendance, _ = Attendance.objects.get_or_create(employee=employee, date=today)
 
+    today = timezone.now().astimezone(IST).date()
+
+    attendance, _ = Attendance.objects.get_or_create(
+        employee=employee,
+        date=today
+    )
+
+    # Already checked-in?
     if attendance.check_in:
         return Response({"error": "Already checked in"}, status=400)
 
-    utc_now = timezone.now()
-    now_ist = utc_now.astimezone(IST)
+    now_utc = timezone.now()
+    now_ist = now_utc.astimezone(IST)
+    current_time = now_ist.time()
 
-    cutoff_disable = time(11, 0)  # Disable check-in after 11:00 AM
-    if now_ist.time() > cutoff_disable:
-        return Response({"error": "Check-in closed after 11:00 AM"}, status=400)
+    # Your Time Rules
+    PRESENT_LIMIT = time(9, 30)     # Before or at 9:30 → Present
+    LATE_LIMIT = time(9, 45)        # 9:31 to 9:45 → Late
+    FINAL_LIMIT = time(10, 0)       # 9:46 to 10:00 → Late  | After 10:00 → Closed
 
-    cutoff_time = CUTOFF_TIME
+    # AFTER 10:00 AM → CHECK-IN CLOSED
+    if current_time > FINAL_LIMIT:
+        attendance.status = "Absent"
+        attendance.save()
+        return Response({
+            "error": "Check-in closed after 10:00 AM",
+            "status": "Absent"
+        }, status=400)
 
-    attendance.check_in = utc_now
-    attendance.status = "Present" if now_ist.time() <= cutoff_time else "Late"
+    # Determine Status
+    if current_time <= PRESENT_LIMIT:
+        status = "Present"
+    elif PRESENT_LIMIT < current_time <= LATE_LIMIT:
+        status = "Late"
+    else:  # between 9:46 and 10:00
+        status = "Late"
+
+    # Save check-in
+    attendance.check_in = now_utc
+    attendance.status = status
     attendance.save()
 
     return Response({
         "message": "Checked in successfully",
         "check_in_time": now_ist.strftime("%I:%M %p"),
-        "status": attendance.status,
+        "status": status
     })
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
