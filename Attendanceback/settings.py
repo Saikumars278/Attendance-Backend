@@ -167,13 +167,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -----------------------------------------------------------------------------------
 # SECURITY
 # -----------------------------------------------------------------------------------
-SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-here")
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")  # local fallback
 
-# Debug false on render, true locally
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-# Allow Render domain + local
-ALLOWED_HOSTS = ["*", ".onrender.com", "127.0.0.1", "localhost"]
+ALLOWED_HOSTS = [
+    "*",
+    ".onrender.com",
+    "127.0.0.1",
+    "localhost",
+]
 
 # -----------------------------------------------------------------------------------
 # APPS
@@ -200,6 +203,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -234,18 +238,19 @@ TEMPLATES = [
 ]
 
 # -----------------------------------------------------------------------------------
-# DATABASE SETTINGS
-# Local → MySQL
-# Render → SQLite unless PostgreSQL URL is provided
+# DATABASES
 # -----------------------------------------------------------------------------------
-if os.environ.get("RENDER"):  # Render.com environment flag
+# Render → SQLite or PostgreSQL using DATABASE_URL
+if os.environ.get("RENDER"):
     DATABASES = {
         "default": dj_database_url.config(
-            default=f"sqlite:///{BASE_DIR}/db.sqlite3",
-            conn_max_age=600
+            default=f"sqlite:///{BASE_DIR}/render.db",
+            conn_max_age=600,
+            ssl_require=False
         )
     }
 else:
+    # Local MySQL
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
@@ -265,12 +270,8 @@ else:
 # -----------------------------------------------------------------------------------
 AUTH_USER_MODEL = "Attendanceapp.User"
 
-AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
-]
-
 # -----------------------------------------------------------------------------------
-# PASSWORD VALIDATION
+# PASSWORD VALIDATORS
 # -----------------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -288,7 +289,7 @@ USE_I18N = True
 USE_TZ = False
 
 # -----------------------------------------------------------------------------------
-# STATIC FILES (Render Compatible)
+# STATIC FILES (WhiteNoise for Render)
 # -----------------------------------------------------------------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -307,7 +308,7 @@ REST_FRAMEWORK = {
 }
 
 # -----------------------------------------------------------------------------------
-# CORS
+# CORS + CSRF
 # -----------------------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
 
