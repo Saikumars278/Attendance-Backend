@@ -8,3 +8,4 @@ django-cors-headers
 mysqlclient
 pytz
 openpyxl
+git commit -m "Add openpyxl dependency"

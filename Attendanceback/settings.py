@@ -241,12 +241,13 @@ TEMPLATES = [
 # DATABASES
 # -----------------------------------------------------------------------------------
 # Render → SQLite or PostgreSQL using DATABASE_URL
-if os.environ.get("RENDER"):
+if os.environ.get("DATABASE_URL"):
+    # Render PostgreSQL
     DATABASES = {
-        "default": dj_database_url.config(
-            default=f"sqlite:///{BASE_DIR}/render.db",
+        "default": dj_database_url.parse(
+            os.environ.get("postgresql://attendance_postgres_lzg4_user:WlvZqcwoOn5zb6HAfGyMjIYQt2Y4Lns7@dpg-d5s96tf18n1s73c9tj30-a/attendance_postgres_lzg4"),
             conn_max_age=600,
-            ssl_require=False
+            ssl_require=True
         )
     }
 else:
