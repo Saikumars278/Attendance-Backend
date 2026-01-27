@@ -1,9 +1,0 @@
-Django
-gunicorn
-psycopg2-binary
-dj-database-url
-whitenoise
-djangorestframework
-django-cors-headers
-mysqlclient
-pytz
