@@ -55,6 +55,12 @@ def logout_page(request):
 
 @login_required(login_url="login")
 def attendance_dashboard(request):
+
+    # ✅ FIX: Allow only admin / superuser
+    if not request.user.is_superuser:
+        messages.error(request, "Admin access only")
+        return redirect("login")
+
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
     employee_filter = request.GET.get("employee", "")
@@ -67,7 +73,9 @@ def attendance_dashboard(request):
     except ValueError:
         start = end = date.today()
 
-    attendance_qs = Attendance.objects.select_related("employee__user", "employee__department").filter(date__range=(start, end))
+    attendance_qs = Attendance.objects.select_related(
+        "employee__user", "employee__department"
+    ).filter(date__range=(start, end))
 
     # Apply employee filter (search by employee id or name)
     if employee_filter:
@@ -76,14 +84,15 @@ def attendance_dashboard(request):
             Q(employee__user__name__icontains=employee_filter)
         )
 
-    # Filter by department if given (department id)
+    # Filter by department if given
     if department_filter:
         attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
 
-    attendance_map = {(a.employee_id, a.date): a for a in attendance_qs}
+    attendance_map = {(a.employee.id, a.date): a for a in attendance_qs}
 
     updated_attendance = []
-    employees = Employee.objects.all()
+    employees = Employee.objects.select_related("user", "department").all()
+
     if department_filter:
         employees = employees.filter(department_id=department_filter)
 
@@ -91,36 +100,48 @@ def attendance_dashboard(request):
     while current_date <= end:
         for emp in employees:
             record = attendance_map.get((emp.id, current_date))
+
             if record:
                 record.approved_permissions = []
-                if request.user.is_superuser:
-                    permissions = Permission.objects.filter(employee=record.employee, date=record.date)
-                    for p in permissions:
-                        p.start_time_str = p.start_time.strftime("%I:%M %p") if p.start_time else "-"
-                        p.end_time_str = p.end_time.strftime("%I:%M %p") if p.end_time else "-"
-                        record.approved_permissions.append(p)
+
+                permissions = Permission.objects.filter(
+                    employee=emp,
+                    date=current_date
+                )
+
+                for p in permissions:
+                    p.start_time_str = p.start_time.strftime("%I:%M %p") if p.start_time else "-"
+                    p.end_time_str = p.end_time.strftime("%I:%M %p") if p.end_time else "-"
+                    record.approved_permissions.append(p)
+
                 record.calculated_hours = None
+
                 if not record.check_in:
                     record.status = "Absent"
                     record.check_in_str = "-"
                     record.check_out_str = "-"
                 else:
                     local_checkin = record.check_in.astimezone(IST).time()
+
                     if local_checkin > ABSENT_TIME:
                         record.status = "Absent"
                     elif local_checkin > CUTOFF_TIME:
                         record.status = "Late"
                     else:
                         record.status = "Present"
+
                     record.check_in_str = record.check_in.astimezone(IST).strftime("%I:%M %p")
+
                     if record.check_out:
                         record.check_out_str = record.check_out.astimezone(IST).strftime("%I:%M %p")
                         record.calculated_hours = record.working_hours
                     else:
                         record.check_out_str = "-"
+
                 updated_attendance.append(record)
+
             else:
-                # No attendance record → mark as absent
+                # No attendance record → Absent
                 temp = type("TempAttendance", (), {})()
                 temp.employee = emp
                 temp.date = current_date
@@ -130,14 +151,17 @@ def attendance_dashboard(request):
                 temp.calculated_hours = None
                 temp.approved_permissions = []
                 updated_attendance.append(temp)
+
         current_date += timedelta(days=1)
 
-    # Summarize attendance counts and total working hours
-    total_employees = Employee.objects.count()
+    # Summary
+    total_employees = employees.count()
     present_count = sum(1 for r in updated_attendance if r.status == "Present")
     absent_count = sum(1 for r in updated_attendance if r.status == "Absent")
     late_count = sum(1 for r in updated_attendance if r.status == "Late")
-    total_working_hours = sum(r.calculated_hours for r in updated_attendance if r.calculated_hours)
+    total_working_hours = sum(
+        r.calculated_hours for r in updated_attendance if r.calculated_hours
+    )
 
     context = {
         "attendance": updated_attendance,
@@ -152,7 +176,9 @@ def attendance_dashboard(request):
         "late_count": late_count,
         "total_working_hours": round(total_working_hours, 2),
     }
+
     return render(request, "home.html", context)
+
 
 # -------------------------------
 # Export Attendance Excel
