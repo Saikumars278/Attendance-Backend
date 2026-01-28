@@ -56,8 +56,8 @@ def logout_page(request):
 @login_required(login_url="login")
 def attendance_dashboard(request):
 
-    # ✅ FIX: Allow only admin / superuser
-    if not request.user.is_superuser:
+    # ✅ FIX 1: Use is_admin (your custom field), not is_superuser
+    if not request.user.is_admin:
         messages.error(request, "Admin access only")
         return redirect("login")
 
@@ -66,7 +66,7 @@ def attendance_dashboard(request):
     employee_filter = request.GET.get("employee", "")
     department_filter = request.GET.get("department", "")
 
-    # Parse start/end dates safely
+    # ✅ Safe date parsing
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else date.today()
         end = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else start
@@ -77,17 +77,16 @@ def attendance_dashboard(request):
         "employee__user", "employee__department"
     ).filter(date__range=(start, end))
 
-    # Apply employee filter (search by employee id or name)
     if employee_filter:
         attendance_qs = attendance_qs.filter(
             Q(employee__employee_id__icontains=employee_filter) |
             Q(employee__user__name__icontains=employee_filter)
         )
 
-    # Filter by department if given
     if department_filter:
         attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
 
+    # ✅ FIX 2: correct key (employee.id, not employee_id)
     attendance_map = {(a.employee.id, a.date): a for a in attendance_qs}
 
     updated_attendance = []
@@ -102,17 +101,9 @@ def attendance_dashboard(request):
             record = attendance_map.get((emp.id, current_date))
 
             if record:
-                record.approved_permissions = []
-
-                permissions = Permission.objects.filter(
-                    employee=emp,
-                    date=current_date
+                record.approved_permissions = list(
+                    Permission.objects.filter(employee=emp, date=current_date)
                 )
-
-                for p in permissions:
-                    p.start_time_str = p.start_time.strftime("%I:%M %p") if p.start_time else "-"
-                    p.end_time_str = p.end_time.strftime("%I:%M %p") if p.end_time else "-"
-                    record.approved_permissions.append(p)
 
                 record.calculated_hours = None
 
@@ -141,7 +132,7 @@ def attendance_dashboard(request):
                 updated_attendance.append(record)
 
             else:
-                # No attendance record → Absent
+                # No attendance → Absent
                 temp = type("TempAttendance", (), {})()
                 temp.employee = emp
                 temp.date = current_date
@@ -154,14 +145,12 @@ def attendance_dashboard(request):
 
         current_date += timedelta(days=1)
 
-    # Summary
+    # ✅ FIX 3: safe totals (no None crash)
     total_employees = employees.count()
     present_count = sum(1 for r in updated_attendance if r.status == "Present")
     absent_count = sum(1 for r in updated_attendance if r.status == "Absent")
     late_count = sum(1 for r in updated_attendance if r.status == "Late")
-    total_working_hours = sum(
-        r.calculated_hours for r in updated_attendance if r.calculated_hours
-    )
+    total_working_hours = sum(r.calculated_hours or 0 for r in updated_attendance)
 
     context = {
         "attendance": updated_attendance,
@@ -178,6 +167,7 @@ def attendance_dashboard(request):
     }
 
     return render(request, "home.html", context)
+
 
 
 # -------------------------------
