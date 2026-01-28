@@ -201,9 +201,9 @@ def export_attendance_excel(request):
     except ValueError:
         end_date = start_date
 
-    attendance_qs = Attendance.objects.filter(date__range=(start_date, end_date)).select_related(
-        "employee__user", "employee__department"
-    )
+    attendance_qs = Attendance.objects.filter(
+        date__range=(start_date, end_date)
+    ).select_related("employee__user", "employee__department")
 
     if employee_filter:
         attendance_qs = attendance_qs.filter(
@@ -214,9 +214,10 @@ def export_attendance_excel(request):
     if department_filter:
         attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
 
-    attendance_map = {(a.employee_id, a.date): a for a in attendance_qs}
+    # ✅ FIX HERE
+    attendance_map = {(a.employee.id, a.date): a for a in attendance_qs}
 
-    employees = Employee.objects.all()
+    employees = Employee.objects.select_related("user", "department").all()
     if department_filter:
         employees = employees.filter(department_id=department_filter)
 
@@ -232,6 +233,7 @@ def export_attendance_excel(request):
     while current <= end_date:
         for emp in employees:
             record = attendance_map.get((emp.id, current))
+
             if record:
                 if not record.check_in:
                     status = "Absent"
@@ -243,13 +245,20 @@ def export_attendance_excel(request):
                         status = "Late"
                     else:
                         status = "Present"
-                total_hours = record.working_hours if record.working_hours else ""
-                permissions_qs = Permission.objects.filter(employee=record.employee, date=record.date)
+
+                total_hours = record.working_hours or ""
+
+                permissions_qs = Permission.objects.filter(
+                    employee=record.employee,
+                    date=record.date
+                )
+
                 permission_str = "\n".join(
                     f"{p.start_time.strftime('%I:%M %p') if p.start_time else '-'}-"
                     f"{p.end_time.strftime('%I:%M %p') if p.end_time else '-'} ({p.status})"
                     for p in permissions_qs
                 )
+
                 ws.append([
                     record.date.strftime("%Y-%m-%d"),
                     record.employee.employee_id,
@@ -263,7 +272,6 @@ def export_attendance_excel(request):
                     record.remarks or "",
                 ])
             else:
-                # No record → Absent row
                 ws.append([
                     current.strftime("%Y-%m-%d"),
                     emp.employee_id,
@@ -273,7 +281,6 @@ def export_attendance_excel(request):
                 ])
         current += timedelta(days=1)
 
-    # Auto width columns
     for col in ws.columns:
         max_length = max(len(str(cell.value)) for cell in col if cell.value) + 5
         ws.column_dimensions[col[0].column_letter].width = max_length
@@ -281,13 +288,15 @@ def export_attendance_excel(request):
     output = BytesIO()
     wb.save(output)
     output.seek(0)
-    filename = f"attendance_report_{start_date.strftime('%Y%m%d')}_to_{end_date.strftime('%Y%m%d')}.xlsx"
+
+    filename = f"attendance_report_{start_date:%Y%m%d}_to_{end_date:%Y%m%d}.xlsx"
     response = HttpResponse(
         output,
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     response["Content-Disposition"] = f"attachment; filename={filename}"
     return response
+
 
 # -------------------------------
 # Employee Management Views
@@ -555,7 +564,8 @@ def check_out(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def attendance_history(request):
-    employee = request.user.employee
+    employee = Employee.objects.get(user=request.user)
+
     month = request.GET.get("month")
     records = Attendance.objects.filter(employee=employee)
 
@@ -580,7 +590,10 @@ def attendance_history(request):
         def get_check_out(self, obj):
             return obj.check_out.astimezone(IST).strftime("%I:%M %p") if obj.check_out else None
 
-    return Response(AttendanceSerializer(records.order_by("-date"), many=True).data)
+    return Response(
+        AttendanceSerializer(records.order_by("-date"), many=True).data
+    )
+
 
 
 
