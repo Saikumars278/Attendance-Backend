@@ -240,31 +240,33 @@ TEMPLATES = [
 # -----------------------------------------------------------------------------------
 # DATABASES
 # -----------------------------------------------------------------------------------
-# Render → SQLite or PostgreSQL using DATABASE_URL
-if os.environ.get("DATABASE_URL"):
-    # Render PostgreSQL
-    DATABASES = {
-        "default": dj_database_url.parse(
-            os.environ.get("postgresql://attendance_postgres_lzg4_user:WlvZqcwoOn5zb6HAfGyMjIYQt2Y4Lns7@dpg-d5s96tf18n1s73c9tj30-a/attendance_postgres_lzg4"),
-            conn_max_age=600,
-            ssl_require=True
-        )
-    }
-else:
+import dj_database_url
+import os
+
+DATABASES = {
+    "default": dj_database_url.parse(
+        os.environ.get("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True,
+    )
+}
+
+
+# else:
     # Local MySQL
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": "attendancedb",
-            "USER": "root",
-            "PASSWORD": "Saikumar278",
-            "HOST": "localhost",
-            "PORT": "3306",
-            "OPTIONS": {
-                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            }
-        }
-    }
+    # DATABASES = {
+    #     "default": {
+    #         "ENGINE": "django.db.backends.mysql",
+    #         "NAME": "attendancedb",
+    #         "USER": "root",
+    #         "PASSWORD": "Saikumar278",
+    #         "HOST": "localhost",
+    #         "PORT": "3306",
+    #         "OPTIONS": {
+    #             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+    #         }
+    #     }
+    # }
 
 # -----------------------------------------------------------------------------------
 # CUSTOM USER MODEL
