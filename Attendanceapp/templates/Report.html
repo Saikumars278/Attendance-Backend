@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Attendance Report - Company Technologies{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Glassmorphism Card and Table */
+    .card {
+        background: rgba(30, 41, 59, 0.5) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 24px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.2) !important;
+    }
+    
+    .table {
+        color: #f8fafc;
+        margin-bottom: 0;
+    }
+    
+    .table thead {
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    .table thead th {
+        color: #94a3b8;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-size: 0.75rem;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .table td {
+        vertical-align: middle;
+        font-size: 0.95rem;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: transparent !important;
+        color: #f8fafc;
+    }
+    
+    .table-hover tbody tr:hover td {
+        background: rgba(255, 255, 255, 0.02) !important;
+    }
+
+    /* Custom column widths */
+    .table th:nth-child(1), .table td:nth-child(1) { min-width: 80px; color: #94a3b8; }   /* ID */
+    .table th:nth-child(2), .table td:nth-child(2) { min-width: 150px; color: #cbd5e1; } /* Employee Code */
+    .table th:nth-child(3), .table td:nth-child(3) { min-width: 200px; font-weight: 700; } /* Employee Name */
+    .table th:nth-child(4), .table td:nth-child(4) { min-width: 150px; } /* Dept */
+    .table th:nth-child(5), .table td:nth-child(5) { min-width: 130px; } /* Date */
+    .table th:nth-child(6), .table td:nth-child(6) { min-width: 120px; } /* Status */
+
+    .badge {
+        border-radius: 20px;
+        font-weight: 700;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .badge-dept {
+        background: rgba(255, 255, 255, 0.1);
+        color: #cbd5e1;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .badge-present {
+        background: #0f5132;
+        color: #d1e7dd;
+        border: 1px solid #198754;
+    }
+    
+    .badge-absent {
+        background: #842029;
+        color: #f8d7da;
+        border: 1px solid #dc3545;
+    }
+    
+    .badge-other {
+        background: #664d03;
+        color: #fff3cd;
+        border: 1px solid #ffc107;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+  <!-- Report Section -->
+  <div class="container my-5">
+    <h2 class="text-center mb-4 fw-bold text-white">Attendance Report</h2>
+
+    <div class="card p-4">
+      <h5 class="fw-bold mb-4 text-white">Past Attendance Records</h5>
+      <div class="table-responsive rounded-4 overflow-hidden" style="border: 1px solid rgba(255, 255, 255, 0.05);">
+        <table class="table table-hover text-center align-middle">
+          <thead>
+            <tr>
+              <th class="border-0">#</th>
+              <th class="border-0">Employee Code</th>
+              <th class="border-0">Employee Name</th>
+              <th class="border-0">Dept</th>
+              <th class="border-0">Date</th>
+              <th class="border-0">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for att in attendance %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ att.employee.employee_id }}</td>
+              <td>{{ att.employee.user.name }}</td>
+              <td><span class="badge badge-dept">{{ att.employee.department.name|default:"-" }}</span></td>
+              <td>{{ att.date|date:"d M Y" }}</td>
+              <td>
+                {% if att.status == 'Present' %}
+                  <span class="badge badge-present">Present</span>
+                {% elif att.status == 'Absent' %}
+                  <span class="badge badge-absent">Absent</span>
+                {% else %}
+                  <span class="badge badge-other">{{ att.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center py-5 text-muted" style="border-bottom: none;">No records found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}

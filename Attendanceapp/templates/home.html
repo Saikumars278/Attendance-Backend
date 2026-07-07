@@ -1,0 +1,858 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin Attendance Dashboard - company Technologies{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    body {
+        background-color: #0f172a !important;
+        background-image: 
+            radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
+        background-attachment: fixed;
+        font-family: 'Inter', 'Poppins', sans-serif;
+        color: #f8fafc;
+        min-height: 100vh;
+    }
+
+    .page-wrapper {
+        max-width: 1450px;
+        margin: 0 auto;
+        padding: 24px 20px;
+    }
+
+    /* ── Page Header ── */
+    .page-header {
+        background: rgba(30, 41, 59, 0.5);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 30px 40px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .page-header::before, .page-header::after {
+        display: none;
+    }
+
+    .page-header-text h1 {
+        font-size: clamp(1.6rem, 3vw, 2.5rem);
+        font-weight: 800;
+        margin: 0 0 6px;
+        background: linear-gradient(to right, #60a5fa, #c084fc, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
+    }
+
+    .page-header-text p {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    /* ── Stat Cards ── */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 1200px) {
+        .stat-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+        .stat-grid { grid-template-columns: 1fr; }
+    }
+
+    .stat-card {
+        background: rgba(30, 41, 59, 0.5);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s, border-color 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-icon {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 2rem;
+        opacity: 0.2;
+        transition: opacity 0.3s, transform 0.3s;
+    }
+    
+    .stat-card:hover .stat-icon {
+        opacity: 0.4;
+        transform: scale(1.1);
+    }
+
+    .stat-num {
+        font-size: 2.2rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 6px;
+        color: #f8fafc !important;
+    }
+
+    .stat-lbl {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #94a3b8;
+    }
+
+    /* ── Content Card ── */
+    .content-card {
+        background: rgba(30, 41, 59, 0.5);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* ── Filter Bar ── */
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 16px;
+        padding: 24px;
+        background: rgba(15, 23, 42, 0.3);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+        min-width: 140px;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+
+    .filter-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(15, 23, 42, 0.5);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #f8fafc;
+        transition: all 0.3s;
+        outline: none;
+    }
+
+    .filter-input:focus {
+        border-color: #3b82f6;
+        background: rgba(15, 23, 42, 0.8);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+    
+    .filter-input option {
+        background: #0f172a;
+        color: #f8fafc;
+    }
+
+    .search-wrap {
+        position: relative;
+        flex: 1.5;
+        min-width: 200px;
+    }
+
+    .search-wrap i {
+        position: absolute;
+        left: 16px;
+        top: 55%;
+        transform: translateY(-50%);
+        color: #64748b;
+        font-size: 1rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .search-wrap .filter-input {
+        padding-left: 48px;
+    }
+
+    .btn-apply, .btn-export {
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        height: 46px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .btn-apply {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+    .btn-apply:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-export {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+    .btn-export:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        color: white;
+    }
+
+    /* ── Table ── */
+    .att-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .att-table thead th {
+        padding: 16px 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        background: rgba(15, 23, 42, 0.6);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: center;
+    }
+
+    .att-table thead th:nth-child(3) {
+        text-align: left;
+    }
+
+    .att-table tbody tr {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .att-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .att-table tbody td {
+        padding: 16px 12px;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        vertical-align: middle;
+        text-align: center;
+    }
+
+    .att-table tbody td:nth-child(3) {
+        text-align: left;
+        font-weight: 600;
+        color: #f8fafc;
+    }
+    
+    .att-table tbody td.fw-bold {
+        color: #94a3b8 !important;
+    }
+
+    .dept-badge {
+        background: rgba(51, 65, 85, 0.5);
+        color: #cbd5e1;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.05);
+        font-weight: 600;
+        font-size: 0.7rem;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .time-badge {
+        font-family: '\''Fira Code'\'', monospace;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #60a5fa;
+        background: rgba(59, 130, 246, 0.1);
+        padding: 4px 10px;
+        border-radius: 6px;
+    }
+
+    .time-badge.empty {
+        color: #475569;
+        background: transparent;
+    }
+
+    /* ── Avatar ── */
+    .emp-avatar-sm {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+    }
+    
+    .text-dark {
+        color: #f8fafc !important;
+    }
+
+    /* ── Status Badges ── */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 12px;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border: 1px solid;
+        white-space: nowrap;
+    }
+
+    .table-responsive { overflow-x: hidden; }
+    .att-table { table-layout: fixed; width: 100%; }
+    .att-table td, .att-table th { word-wrap: break-word; }
+
+    .status-badge.present { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
+    .status-badge.late { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(251, 191, 36, 0.2); }
+    .status-badge.absent { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(248, 113, 113, 0.2); }
+    .status-badge.wfh { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border-color: rgba(56, 189, 248, 0.2); }
+
+    /* ── Mobile Card View ── */
+    .mobile-cards-view { display: none; padding: 12px; }
+
+    .att-card {
+        background: rgba(30, 41, 59, 0.5);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-emp { display: flex; align-items: center; gap: 12px; }
+    .card-emp-info { display: flex; flex-direction: column; }
+    .card-emp-name { font-weight: 700; color: #f8fafc; font-size: 1rem; line-height: 1.2; }
+    .card-emp-dept { font-size: 0.75rem; color: #94a3b8; font-weight: 500; margin-top:2px;}
+
+    .card-stats {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .card-stat-item { display: flex; flex-direction: column; gap: 4px; }
+    .card-stat-lbl { font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card-stat-val { font-size: 0.9rem; font-weight: 600; color: #cbd5e1; }
+
+    @media (max-width: 768px) {
+        .table-responsive { display: none !important; }
+        .mobile-cards-view { display: block; }
+    }
+
+    /* ── Empty State ── */
+    .empty-state { padding: 80px 20px; text-align: center; }
+    .empty-icon {
+        width: 80px; height: 80px; border-radius: 24px;
+        background: rgba(255, 255, 255, 0.05);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 24px; font-size: 2.5rem; color: #475569;
+    }
+
+    /* ── Loading Overlay ── */
+    .loading-overlay {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(8px);
+        z-index: 1000; display: none; align-items: center; justify-content: center;
+        border-radius: 20px;
+    }
+
+    .spinner-custom {
+        width: 48px; height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .refreshing .loading-overlay { display: flex; }
+
+    /* ── Permission Column ── */
+    .perm-cell { min-width: 160px; }
+    .perm-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.75rem; }
+    .perm-item:last-child { margin-bottom: 0; }
+    .perm-time { font-family: '\''Fira Code'\'', monospace; font-size: 0.75rem; color: #94a3b8; font-weight: 600; white-space: nowrap; }
+    
+    .perm-badge {
+        padding: 4px 10px; border-radius: 100px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .perm-badge.approved { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .perm-badge.rejected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .perm-badge.pending  { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+
+    .perm-action-btn {
+        width: 28px; height: 28px; border-radius: 8px; border: none;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .perm-action-btn:hover { transform: scale(1.1); }
+    .perm-action-btn.approve { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .perm-action-btn.reject  { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .perm-action-btn.is-loading { pointer-events: none; opacity: 0.5; }
+
+    .perm-btn-spinner {
+        width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.2); border-top-color: currentColor; border-radius: 50%;
+        animation: spin 0.6s linear infinite; display: inline-block;
+    }
+    .perm-none { color: #475569; font-size: 0.75rem; font-style: italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper position-relative" id="attendance-dashboard-content">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay">
+        <div class="spinner-custom"></div>
+    </div>
+
+    <!-- ── Page Header ── -->
+    <div class="page-header">
+        <div class="page-header-text">
+            <h1><i class="bi bi-clock-history me-2"></i>Attendance Dashboard</h1>
+            <p>Monitor daily attendance, view summaries, and export records.</p>
+        </div>
+    </div>
+
+    <!-- ── Stat Cards ── -->
+    <div class="stat-grid">
+        <div class="stat-card">
+            <i class="bi bi-people-fill stat-icon" style="color:#64748b;"></i>
+            <div class="stat-num text-dark">{{ total_employees }}</div>
+            <div class="stat-lbl">Total Employees</div>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-person-check-fill stat-icon" style="color:#16a34a;"></i>
+            <div class="stat-num text-success">{{ present_count }}</div>
+            <div class="stat-lbl">Today Present</div>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-person-exclamation-fill stat-icon" style="color:#dc2626;"></i>
+            <div class="stat-num text-danger">{{ absent_count }}</div>
+            <div class="stat-lbl">Today Absent</div>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-person-dash-fill stat-icon" style="color:#d97706;"></i>
+            <div class="stat-num text-warning">{{ late_count }}</div>
+            <div class="stat-lbl">Late Arrivals</div>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-house-door-fill stat-icon" style="color:#0ea5e9;"></i>
+            <div class="stat-num" style="color:#0ea5e9;">{{ wfh_count }}</div>
+            <div class="stat-lbl">WFH Today</div>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-hourglass-split stat-icon" style="color:#3b82f6;"></i>
+            <div class="stat-num" style="color:#3b82f6;">{{ total_working_hours }}</div>
+            <div class="stat-lbl">Working Hours</div>
+        </div>
+    </div>
+
+    <!-- ── Content Card ── -->
+    <div class="content-card">
+
+        <!-- Filter Bar -->
+        <form method="GET" class="filter-bar" id="attendanceFilterForm">
+            <div class="filter-group">
+                <label>Start Date</label>
+                <input type="date" class="filter-input" name="start_date" id="start-date-input"
+                    value="{{ start_date }}">
+            </div>
+            <div class="filter-group">
+                <label>End Date</label>
+                <input type="date" class="filter-input" name="end_date" id="end-date-input" value="{{ end_date }}">
+            </div>
+            <div class="filter-group search-wrap">
+                <label>Search Employee</label>
+                <i class="bi bi-search"></i>
+                <input type="text" class="filter-input" name="employee" id="employee-search-input"
+                    placeholder="Name or ID..." value="{{ employee_filter }}">
+            </div>
+            <div class="filter-group">
+                <label>Department</label>
+                <select class="filter-input" name="department" id="department-select">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.id }}" {% if dept.id == department_filter %}selected{% endif %}>{{ dept.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn-apply" title="Apply Filters">
+                    <i class="bi bi-funnel-fill"></i> Filter
+                </button>
+                <a href="{% url 'export_attendance_excel' %}?start_date={{ start_date }}&end_date={{ end_date }}&employee={{ employee_filter }}&department={{ department_filter }}"
+                    id="export-link" class="btn-export" title="Export to Excel">
+                    <i class="bi bi-file-earmark-excel-fill"></i> Export
+                </a>
+            </div>
+        </form>
+
+        <!-- Table View (Desktop/Tablet) -->
+        <div class="table-responsive d-none d-md-block">
+            <table class="att-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Employee</th>
+                        <th>Dept</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Check-in</th>
+                        <th>Check-out</th>
+                        <th>Work Mode</th>
+                        <th>Work Hrs</th>
+                        <th>Permissions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for att in attendance %}
+                    <tr>
+                        <td class="fw-bold" style="color:#64748b;font-size:0.82rem;">{{ att.employee.employee_id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                <div class="emp-avatar-sm">{{ att.employee.user.name|slice:":1" }}</div>
+                                <div class="fw-bold text-dark text-truncate" style="font-size:0.82rem;"
+                                    title="{{ att.employee.user.name }}">{{ att.employee.user.name }}</div>
+                            </div>
+                        </td>
+                        <td><span class="dept-badge text-truncate" style="max-width: 120px;">{{ att.employee.department.name|default:"-" }}</span></td>
+                        <td class="fw-semibold text-muted" style="font-size:0.8rem;">{{ att.date|date:"d M Y" }}</td>
+                        <td>
+                            {% if 'Present' in att.status %}
+                            <span class="status-badge present"><i class="bi bi-check-circle-fill"></i> Present</span>
+                            {% elif 'Late' in att.status %}
+                            <span class="status-badge late"><i class="bi bi-exclamation-triangle-fill"></i> Late</span>
+                            {% elif 'WFH' in att.status %}
+                            <span class="status-badge wfh"><i class="bi bi-house-door-fill"></i> WFH</span>
+                            {% else %}
+                            <span class="status-badge absent"><i class="bi bi-x-circle-fill"></i> Absent</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="time-badge {% if att.check_in_str == '--:--' %}empty{% endif %}"
+                                style="font-size: 0.8rem;">{{ att.check_in_str }}</span></td>
+                        <td><span class="time-badge {% if att.check_out_str == '--:--' %}empty{% endif %}"
+                                style="font-size: 0.8rem;">{{ att.check_out_str }}</span></td>
+                        <td>
+                            {% if att.work_mode == 'WFH' %}
+                            <span class="badge rounded-pill bg-info bg-opacity-10 text-info border border-info border-opacity-10 px-2 py-1" style="font-size:0.65rem;">🏠 WFH</span>
+                            {% else %}
+                            <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-10 px-2 py-1" style="font-size:0.65rem;">🏢 Office</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold text-dark" style="font-size:0.88rem;">{{ att.calculated_hours|default:"-" }}</td>
+                        <td class="perm-cell">
+                            {% for p in att.permissions_list %}
+                            <div class="perm-item" data-perm-id="{{ p.id }}">
+                                <span class="perm-time">{{ p.start_time|time:"h:iA" }}-{{ p.end_time|time:"h:iA" }}</span>
+                                {% if p.status == 'Pending' %}
+                                <form class="perm-inline-form d-inline-flex gap-1" action="{% url 'admin_update_permission' %}" method="POST" data-perm-id="{{ p.id }}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="permission_id" value="{{ p.id }}">
+                                    <button type="submit" name="status" value="Approved" class="perm-action-btn approve" title="Approve"><i class="bi bi-check2"></i></button>
+                                    <button type="submit" name="status" value="Rejected" class="perm-action-btn reject" title="Reject"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                                {% elif p.status == 'Approved' %}
+                                <span class="perm-badge approved">✓</span>
+                                {% else %}
+                                <span class="perm-badge rejected">✕</span>
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <span class="perm-none">—</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+                                <div class="fw-bold text-muted">No attendance records found</div>
+                                <div class="text-muted small mt-1">Try adjusting your filters.</div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Card View (Handhelds) -->
+        <div class="mobile-cards-view">
+            {% for att in attendance %}
+            <div class="att-card">
+                <div class="card-top">
+                    <div class="card-emp">
+                        <div class="emp-avatar-sm">{{ att.employee.user.name|slice:":1" }}</div>
+                        <div class="card-emp-info">
+                            <span class="card-emp-name">{{ att.employee.user.name }}</span>
+                            <span class="card-emp-dept">{{ att.employee.employee_id }} • {{ att.employee.department.name|default:"-" }}</span>
+                        </div>
+                    </div>
+                    {% if 'Present' in att.status %}
+                    <span class="status-badge present" style="padding:4px 10px;">Present</span>
+                    {% elif 'Late' in att.status %}
+                    <span class="status-badge late" style="padding:4px 10px;">Late</span>
+                    {% else %}
+                    <span class="status-badge absent" style="padding:4px 10px;">Absent</span>
+                    {% endif %}
+                </div>
+
+                <div class="card-stats">
+                    <div class="card-stat-item">
+                        <span class="card-stat-lbl">Date</span>
+                        <span class="card-stat-val">{{ att.date|date:"d M Y" }}</span>
+                    </div>
+                    <div class="card-stat-item">
+                        <span class="card-stat-lbl">Working Hours</span>
+                        <span class="card-stat-val">{{ att.calculated_hours|default:"-" }} hrs</span>
+                    </div>
+                    <div class="card-stat-item">
+                        <span class="card-stat-lbl">Check In</span>
+                        <span class="card-stat-val {% if att.check_in_str == '--:--' %}text-muted{% endif %}">{{ att.check_in_str }}</span>
+                    </div>
+                    <div class="card-stat-item">
+                        <span class="card-stat-lbl">Check Out</span>
+                        <span class="card-stat-val {% if att.check_out_str == '--:--' %}text-muted{% endif %}">{{ att.check_out_str }}</span>
+                    </div>
+                </div>
+
+                {% if att.permissions_list %}
+                <div style="padding-top:10px; border-top:1px dashed #f1f5f9; margin-top:10px;">
+                    <span class="card-stat-lbl">Permissions</span>
+                    {% for p in att.permissions_list %}
+                    <div class="perm-item mt-1" data-perm-id="{{ p.id }}">
+                        <span class="perm-time">{{ p.start_time|time:"h:iA" }}-{{ p.end_time|time:"h:iA" }}</span>
+                        {% if p.status == 'Pending' %}
+                        <form class="perm-inline-form d-inline-flex gap-1" action="{% url 'admin_update_permission' %}" method="POST" data-perm-id="{{ p.id }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="permission_id" value="{{ p.id }}">
+                            <button type="submit" name="status" value="Approved" class="perm-action-btn approve" title="Approve"><i class="bi bi-check2"></i></button>
+                            <button type="submit" name="status" value="Rejected" class="perm-action-btn reject" title="Reject"><i class="bi bi-x-lg"></i></button>
+                        </form>
+                        {% elif p.status == 'Approved' %}
+                        <span class="perm-badge approved">✓</span>
+                        {% else %}
+                        <span class="perm-badge rejected">✕</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <i class="bi bi-calendar-x mb-2" style="font-size:2rem; color:#cbd5e1;"></i>
+                <div class="fw-bold text-muted">No records found</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div> <!-- End Content Card -->
+</div> <!-- End Page Wrapper -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const content = document.getElementById('attendance-dashboard-content');
+
+        const refresh = () => {
+            const startDateEl = document.getElementById('start-date-input');
+            const endDateEl = document.getElementById('end-date-input');
+            const employeeEl = document.getElementById('employee-search-input');
+            const departmentEl = document.getElementById('department-select');
+
+            if (!startDateEl || !endDateEl || !employeeEl || !departmentEl) return;
+
+            const url = new URL(window.location.href);
+            url.searchParams.set('start_date', startDateEl.value);
+            url.searchParams.set('end_date', endDateEl.value);
+            url.searchParams.set('employee', employeeEl.value);
+            url.searchParams.set('department', departmentEl.value);
+
+            content.classList.add('refreshing');
+
+            fetch(url)
+                .then(r => r.text())
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const newContent = doc.getElementById('attendance-dashboard-content');
+                    if (newContent) {
+                        content.innerHTML = newContent.innerHTML;
+                    }
+                    content.classList.remove('refreshing');
+                    window.history.pushState({}, '', url);
+                    bindListeners();
+
+                    // Restore focus for search
+                    const newSearch = document.getElementById('employee-search-input');
+                    if (newSearch && employeeEl.value) {
+                        newSearch.focus();
+                        newSearch.setSelectionRange(employeeEl.value.length, employeeEl.value.length);
+                    }
+                })
+                .catch(() => {
+                    content.classList.remove('refreshing');
+                });
+        };
+
+        let debounceTimer;
+        const bindListeners = () => {
+            const s = document.getElementById('start-date-input');
+            const e = document.getElementById('end-date-input');
+            const search = document.getElementById('employee-search-input');
+            const d = document.getElementById('department-select');
+            const f = document.getElementById('attendanceFilterForm');
+
+            if (f) f.addEventListener('submit', (ev) => {
+                ev.preventDefault();
+                refresh();
+            });
+
+            if (s) s.addEventListener('change', refresh);
+            if (e) e.addEventListener('change', refresh);
+            if (d) d.addEventListener('change', refresh);
+            if (search) {
+                search.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(refresh, 500);
+                });
+            }
+
+            // ── Permission Approve/Reject inline forms ──
+            document.querySelectorAll('.perm-inline-form').forEach(form => {
+                form.addEventListener('submit', (ev) => {
+                    ev.preventDefault();
+                    const submitter = ev.submitter;
+                    const formData = new FormData(form);
+                    const permItem = form.closest('.perm-item');
+
+                    if (submitter && submitter.name) {
+                        formData.append(submitter.name, submitter.value);
+                    }
+
+                    // Show spinner on clicked button
+                    const originalHtml = submitter.innerHTML;
+                    submitter.innerHTML = '<span class="perm-btn-spinner"></span>';
+                    submitter.classList.add('is-loading');
+                    form.querySelectorAll('button').forEach(b => b.disabled = true);
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Replace the form with a status badge
+                            const newStatus = data.new_status;
+                            const cls = newStatus === 'Approved' ? 'approved' : 'rejected';
+                            const icon = newStatus === 'Approved' ? '✓' : '✕';
+                            form.outerHTML = `<span class="perm-badge ${cls}">${icon}</span>`;
+
+                            // ✅ Update working hours in the row instantly
+                            // Desktop Table (8th column)
+                            const tr = permItem.closest('tr');
+                            if (tr) {
+                                const workHrsCell = tr.querySelector('td:nth-child(8)');
+                                if (workHrsCell && data.updated_hours !== undefined) {
+                                    workHrsCell.textContent = data.updated_hours;
+                                    workHrsCell.classList.add('text-primary'); // Brief visual hint
+                                }
+                            }
+
+                            // Mobile Card
+                            const card = permItem.closest('.att-card');
+                            if (card) {
+                                const workHrsVal = card.querySelector('.card-stat-item:nth-child(2) .card-stat-val');
+                                if (workHrsVal && data.updated_hours !== undefined) {
+                                    workHrsVal.textContent = data.updated_hours + ' hrs';
+                                    workHrsVal.style.color = 'var(--bs-primary)';
+                                }
+                            }
+                        } else {
+                            alert('Error: ' + data.message);
+                            submitter.innerHTML = originalHtml;
+                            submitter.classList.remove('is-loading');
+                            form.querySelectorAll('button').forEach(b => b.disabled = false);
+                        }
+                    })
+                    .catch(() => {
+                        submitter.innerHTML = originalHtml;
+                        submitter.classList.remove('is-loading');
+                        form.querySelectorAll('button').forEach(b => b.disabled = false);
+                    });
+                });
+            });
+        };
+
+        bindListeners();
+    });
+</script>
+{% endblock %}
